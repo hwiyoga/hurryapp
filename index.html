@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MRT Dash">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>MRT Dash</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: #0a0a0a;
+    color: #fff;
+    overflow: hidden;
+    user-select: none;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 20px 16px;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .logo {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: #888;
+  }
+  .clock {
+    font-size: 13px;
+    color: #888;
+    font-variant-numeric: tabular-nums;
+  }
+  .station-bar {
+    margin: 18px 0 14px;
+  }
+  .station-label {
+    font-size: 11px;
+    color: #666;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .station-name {
+    font-size: 26px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .station-picker {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin-left: auto;
+  }
+  .directions {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 10px;
+    min-height: 0;
+  }
+  .direction-card {
+    flex: 1;
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: background 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .direction-card.chill   { background: linear-gradient(135deg, #0f3d2e 0%, #1a5c43 100%); }
+  .direction-card.walk    { background: linear-gradient(135deg, #4a3b0f 0%, #7a5f15 100%); }
+  .direction-card.dash    { background: linear-gradient(135deg, #6b1414 0%, #a11f1f 100%); animation: pulse 1s infinite; }
+  .direction-card.missed  { background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%); }
+  .direction-card.closed  { background: #1a1a1a; }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.015); }
+  }
+  .dir-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .dir-name {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.75;
+  }
+  .dir-toward {
+    font-size: 17px;
+    font-weight: 600;
+    margin-top: 3px;
+  }
+  .verdict {
+    font-size: 44px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-top: 14px;
+  }
+  .verdict-sub {
+    font-size: 14px;
+    opacity: 0.85;
+    margin-top: 6px;
+  }
+  .dir-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: auto;
+    padding-top: 12px;
+    font-size: 12px;
+    opacity: 0.75;
+  }
+  .next-train {
+    font-variant-numeric: tabular-nums;
+  }
+  .status {
+    text-align: center;
+    padding: 40px 20px;
+    color: #888;
+    font-size: 15px;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .error {
+    background: #2a1515;
+    color: #ff9999;
+    padding: 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    margin-top: 12px;
+  }
+  .footer-note {
+    font-size: 10px;
+    color: #555;
+    text-align: center;
+    margin-top: 10px;
+  }
+  .loading-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4ade80;
+    animation: blink 1s infinite;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  @keyframes blink { 50% { opacity: 0.3; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">MRT DASH</div>
+    <div class="clock" id="clock">--:--</div>
+  </header>
+
+  <div class="station-bar">
+    <div class="station-label">Station</div>
+    <div class="station-name">
+      <span id="stationName">Locating…</span>
+      <select class="station-picker" id="stationPicker" style="display:none">
+        <option value="">change…</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="content" class="directions">
+    <div class="status"><span class="loading-dot"></span>Getting location…</div>
+  </div>
+
+  <div class="footer-note" id="footerNote">schedule: weekday peak 5min · off-peak 10min · weekend 10min</div>
+</div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const DATA = {
+  stations: [
+    { id: "LBB", name: "Lebak Bulus Grab",  lat: -6.28910, lon: 106.77510, type: "elevated",    offset_nb: 0  },
+    { id: "FTM", name: "Fatmawati",         lat: -6.29350, lon: 106.79280, type: "elevated",    offset_nb: 3  },
+    { id: "CPR", name: "Cipete Raya",       lat: -6.27810, lon: 106.79710, type: "elevated",    offset_nb: 5  },
+    { id: "HJN", name: "Haji Nawi",         lat: -6.26620, lon: 106.79770, type: "elevated",    offset_nb: 7  },
+    { id: "BLA", name: "Blok A",            lat: -6.25570, lon: 106.79770, type: "elevated",    offset_nb: 9  },
+    { id: "BLM", name: "Blok M BCA",        lat: -6.24440, lon: 106.79830, type: "elevated",    offset_nb: 12 },
+    { id: "ASN", name: "ASEAN",             lat: -6.23720, lon: 106.79830, type: "elevated",    offset_nb: 14 },
+    { id: "SNY", name: "Senayan",           lat: -6.22590, lon: 106.80250, type: "elevated",    offset_nb: 17 },
+    { id: "IST", name: "Istora Mandiri",    lat: -6.22480, lon: 106.80730, type: "underground", offset_nb: 19 },
+    { id: "BNH", name: "Bendungan Hilir",   lat: -6.21230, lon: 106.81800, type: "underground", offset_nb: 22 },
+    { id: "STB", name: "Setiabudi Astra",   lat: -6.20860, lon: 106.82170, type: "underground", offset_nb: 24 },
+    { id: "DKA", name: "Dukuh Atas BNI",    lat: -6.20180, lon: 106.82290, type: "underground", offset_nb: 27 },
+    { id: "BHI", name: "Bundaran HI",       lat: -6.19510, lon: 106.82300, type: "underground", offset_nb: 29 }
+  ],
+  schedule: {
+    weekday: {
+      start: "05:00", end: "24:00",
+      peak_windows: [["07:00","09:00"], ["17:00","19:00"]],
+      peak_headway: 5,
+      offpeak_headway: 10
+    },
+    weekend: {
+      start: "06:00", end: "24:00",
+      headway: 10
+    }
+  },
+  // walk time from gate through tap-in to platform (in seconds)
+  walk_seconds: { elevated: 75, underground: 105 },
+  total_trip_min: 29
+};
+
+// ============================================================
+// TIME UTILS
+// ============================================================
+function hmToMin(hm) {
+  const [h, m] = hm.split(":").map(Number);
+  return h * 60 + m;
+}
+function minToHM(min) {
+  min = ((min % 1440) + 1440) % 1440;
+  const h = Math.floor(min / 60), m = min % 60;
+  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+}
+function nowMinutes(date = new Date()) {
+  return date.getHours() * 60 + date.getMinutes() + date.getSeconds() / 60;
+}
+function isWeekend(date = new Date()) {
+  const d = date.getDay(); return d === 0 || d === 6;
+}
+function inWindow(minutes, windows) {
+  return windows.some(([s, e]) => minutes >= hmToMin(s) && minutes < hmToMin(e));
+}
+
+// ============================================================
+// SCHEDULE LOGIC
+// Generates terminal departure minutes for a given direction & day.
+// We treat headway changes by recomputing the "next departure" iteratively:
+// start from schedule.start, advance by current-headway until we pass `now`.
+// ============================================================
+function terminalDeparturesAfter(nowMin, date = new Date()) {
+  const sched = isWeekend(date) ? DATA.schedule.weekend : DATA.schedule.weekday;
+  const startMin = hmToMin(sched.start);
+  const endMin = sched.end === "24:00" ? 1440 : hmToMin(sched.end);
+
+  if (nowMin >= endMin) return [];
+  const cursor = Math.max(nowMin, startMin);
+
+  const departures = [];
+  let t = startMin;
+  // advance t until we're at or past cursor
+  while (t < cursor) {
+    const hw = headwayAt(t, sched);
+    t += hw;
+  }
+  // collect next ~4 departures
+  while (t < endMin && departures.length < 4) {
+    departures.push(t);
+    const hw = headwayAt(t, sched);
+    t += hw;
+  }
+  return departures;
+}
+
+function headwayAt(minOfDay, sched) {
+  if (sched.headway) return sched.headway; // weekend flat
+  if (inWindow(minOfDay, sched.peak_windows)) return sched.peak_headway;
+  return sched.offpeak_headway;
+}
+
+// For a given station and direction, compute times the train arrives at MY station
+function nextArrivalsAtStation(station, direction, nowMin, date = new Date()) {
+  // northbound = from Lebak Bulus toward Bundaran HI
+  // southbound = from Bundaran HI toward Lebak Bulus
+  const offset = direction === "northbound"
+    ? station.offset_nb
+    : (DATA.total_trip_min - station.offset_nb);
+
+  // We need terminal departures such that (departure + offset) > now.
+  // Search back a bit to cover trains that left terminal before now but
+  // haven't reached our station yet.
+  const searchFrom = Math.max(0, nowMin - DATA.total_trip_min - 2);
+  const departures = terminalDeparturesAfter(searchFrom, date);
+
+  // station arrivals = departure + offset, filter to future only
+  return departures
+    .map(d => d + offset)
+    .filter(t => t >= nowMin)
+    .slice(0, 3);
+}
+
+// ============================================================
+// GEO
+// ============================================================
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = x => x * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function nearestStation(lat, lon, maxMeters = 300) {
+  let best = null, bestDist = Infinity;
+  for (const s of DATA.stations) {
+    const d = haversine(lat, lon, s.lat, s.lon);
+    if (d < bestDist) { bestDist = d; best = s; }
+  }
+  return bestDist <= maxMeters ? { station: best, distance: bestDist } : null;
+}
+
+// ============================================================
+// VERDICT
+// slack = minutes until train - walk_time (in minutes)
+// ============================================================
+function verdict(minutesUntil, station) {
+  const walkMin = DATA.walk_seconds[station.type] / 60;
+  const slack = minutesUntil - walkMin;
+
+  if (minutesUntil < 0) return { class: "missed", verdict: "MISSED", sub: "next train shown below" };
+  if (slack < 0)          return { class: "missed", verdict: "TOO LATE", sub: `need ${walkMin.toFixed(1)} min to platform` };
+  if (slack < 0.5)        return { class: "dash",   verdict: "DASH!",    sub: `only ${(slack*60).toFixed(0)}s of slack` };
+  if (slack < 2)          return { class: "walk",   verdict: "WALK FAST", sub: `${slack.toFixed(1)} min to spare` };
+  return                         { class: "chill",  verdict: "CHILL",    sub: `${slack.toFixed(1)} min to spare` };
+}
+
+// ============================================================
+// UI
+// ============================================================
+let currentStation = null;
+let refreshInterval = null;
+
+function fmtMinutes(m) {
+  if (m < 1) return `${Math.round(m * 60)}s`;
+  return `${m.toFixed(1)} min`;
+}
+
+function renderDirections(station) {
+  const content = document.getElementById("content");
+  const now = nowMinutes();
+
+  const isTerminalSouth = station.id === "LBB";
+  const isTerminalNorth = station.id === "BHI";
+
+  const directions = [];
+  if (!isTerminalNorth) directions.push({ key: "northbound", toward: "Bundaran HI" });
+  if (!isTerminalSouth) directions.push({ key: "southbound", toward: "Lebak Bulus Grab" });
+
+  content.innerHTML = "";
+  for (const dir of directions) {
+    const arrivals = nextArrivalsAtStation(station, dir.key, now);
+
+    const card = document.createElement("div");
+    card.className = "direction-card";
+
+    if (arrivals.length === 0) {
+      card.classList.add("closed");
+      card.innerHTML = `
+        <div class="dir-top">
+          <div>
+            <div class="dir-name">${dir.key === "northbound" ? "↑ Northbound" : "↓ Southbound"}</div>
+            <div class="dir-toward">toward ${dir.toward}</div>
+          </div>
+        </div>
+        <div class="verdict" style="font-size:28px">— CLOSED —</div>
+        <div class="verdict-sub">no more trains today</div>
+        <div class="dir-bottom"><span></span><span></span></div>
+      `;
+    } else {
+      const minUntil = arrivals[0] - now;
+      const v = verdict(minUntil, station);
+      card.classList.add(v.class);
+
+      const nextNext = arrivals[1] != null
+        ? `next after: ${fmtMinutes(arrivals[1] - now)} · ${minToHM(arrivals[1])}`
+        : "";
+
+      card.innerHTML = `
+        <div class="dir-top">
+          <div>
+            <div class="dir-name">${dir.key === "northbound" ? "↑ Northbound" : "↓ Southbound"}</div>
+            <div class="dir-toward">toward ${dir.toward}</div>
+          </div>
+          <div style="text-align:right; font-size:13px; opacity:0.8">
+            in ${fmtMinutes(minUntil)}<br>
+            <span style="font-variant-numeric:tabular-nums">${minToHM(arrivals[0])}</span>
+          </div>
+        </div>
+        <div>
+          <div class="verdict">${v.verdict}</div>
+          <div class="verdict-sub">${v.sub}</div>
+        </div>
+        <div class="dir-bottom">
+          <span class="next-train">${nextNext}</span>
+          <span>walk: ~${DATA.walk_seconds[station.type]}s</span>
+        </div>
+      `;
+    }
+
+    content.appendChild(card);
+  }
+}
+
+function populatePicker() {
+  const picker = document.getElementById("stationPicker");
+  picker.innerHTML = '<option value="">change station…</option>';
+  for (const s of DATA.stations) {
+    const opt = document.createElement("option");
+    opt.value = s.id;
+    opt.textContent = s.name;
+    picker.appendChild(opt);
+  }
+  picker.style.display = "inline-block";
+  picker.onchange = (e) => {
+    const s = DATA.stations.find(x => x.id === e.target.value);
+    if (s) { setStation(s); e.target.value = ""; }
+  };
+}
+
+function setStation(station) {
+  currentStation = station;
+  document.getElementById("stationName").textContent = station.name;
+  populatePicker();
+  renderDirections(station);
+  if (refreshInterval) clearInterval(refreshInterval);
+  refreshInterval = setInterval(() => renderDirections(station), 5000);
+}
+
+function showStationList(msg) {
+  const content = document.getElementById("content");
+  content.innerHTML = `<div class="status">${msg}<br><br>Pick your station below ↓</div>`;
+  document.getElementById("stationName").textContent = "Not detected";
+  populatePicker();
+}
+
+// ============================================================
+// BOOTSTRAP
+// ============================================================
+function startClock() {
+  const tick = () => {
+    const d = new Date();
+    document.getElementById("clock").textContent =
+      `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
+  };
+  tick();
+  setInterval(tick, 1000);
+}
+
+function init() {
+  startClock();
+
+  if (!("geolocation" in navigator)) {
+    showStationList("Geolocation not supported on this device.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const hit = nearestStation(pos.coords.latitude, pos.coords.longitude, 400);
+      if (hit) {
+        setStation(hit.station);
+      } else {
+        showStationList("You're not near any MRT station (within 400m).");
+      }
+    },
+    (err) => {
+      let msg = "Couldn't get your location.";
+      if (err.code === 1) msg = "Location permission denied.";
+      else if (err.code === 3) msg = "Location request timed out.";
+      showStationList(msg);
+    },
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+  );
+}
+
+init();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+</script>
+</body>
+</html>

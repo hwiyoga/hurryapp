@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0a0a0a"/>
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#4ade80" stroke-width="14" opacity="0.25"/>
+  <text x="256" y="298" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
+        font-size="200" font-weight="800" text-anchor="middle"
+        fill="#4ade80" letter-spacing="-6">MRT</text>
+  <text x="256" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
+        font-size="48" font-weight="600" text-anchor="middle"
+        fill="#888" letter-spacing="8">DASH</text>
+</svg>
