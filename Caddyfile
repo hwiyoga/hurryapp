@@ -1,0 +1,36 @@
+{
+    email hwiyoga@gmail.com
+}
+
+# Main app — static PWA served from /srv/hurryapp
+hurryapp.id {
+    root * /srv/hurryapp
+    encode gzip
+    try_files {path} {path}/ /index.html
+    file_server
+}
+
+# www → apex
+www.hurryapp.id {
+    redir https://hurryapp.id{uri} permanent
+}
+
+# Baskara — reverse-proxied to its containers on shared caddy_net
+baskara.hurryapp.id {
+    encode gzip
+
+    handle /api/* {
+        reverse_proxy baskara-backend:8000
+    }
+    handle /health {
+        reverse_proxy baskara-backend:8000
+    }
+    handle {
+        reverse_proxy baskara-frontend:80
+    }
+}
+
+# Raw IP over HTTP → hurryapp.id (no TLS for IP, that's fine)
+http://165.22.96.5 {
+    redir https://hurryapp.id{uri} permanent
+}

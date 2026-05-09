@@ -1,0 +1,25 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./:/srv/hurryapp:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - caddy_net
+
+networks:
+  caddy_net:
+    name: caddy_net
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
