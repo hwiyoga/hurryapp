@@ -8,6 +8,16 @@ hurryapp.id {
     encode gzip
     try_files {path} {path}/ /index.html
     file_server
+
+    # Always-fresh entry points so PWA updates roll out.
+    # The service worker handles asset versioning, but only if its own
+    # file (sw.js) and the HTML shell aren't cached aggressively.
+    @fresh path / /index.html /sw.js /manifest.json
+    header @fresh Cache-Control "no-cache"
+
+    # Icons rarely change — let browsers hold them for a day.
+    @assets path *.png *.svg
+    header @assets Cache-Control "public, max-age=86400"
 }
 
 # www → apex

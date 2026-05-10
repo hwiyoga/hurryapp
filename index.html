@@ -202,7 +202,7 @@
     <div class="status"><span class="loading-dot"></span>Getting location…</div>
   </div>
 
-  <div class="footer-note" id="footerNote">schedule: weekday peak 5min · off-peak 10min · weekend 10min</div>
+  <div class="footer-note" id="footerNote">weekday: 5–13 min depending on time · weekend: 10 min</div>
 </div>
 
 <script>
@@ -211,30 +211,45 @@
 // ============================================================
 const DATA = {
   stations: [
-    { id: "LBB", name: "Lebak Bulus Grab",  lat: -6.28910, lon: 106.77510, type: "elevated",    offset_nb: 0  },
-    { id: "FTM", name: "Fatmawati",         lat: -6.29350, lon: 106.79280, type: "elevated",    offset_nb: 3  },
-    { id: "CPR", name: "Cipete Raya",       lat: -6.27810, lon: 106.79710, type: "elevated",    offset_nb: 5  },
-    { id: "HJN", name: "Haji Nawi",         lat: -6.26620, lon: 106.79770, type: "elevated",    offset_nb: 7  },
-    { id: "BLA", name: "Blok A",            lat: -6.25570, lon: 106.79770, type: "elevated",    offset_nb: 9  },
-    { id: "BLM", name: "Blok M BCA",        lat: -6.24440, lon: 106.79830, type: "elevated",    offset_nb: 12 },
-    { id: "ASN", name: "ASEAN",             lat: -6.23720, lon: 106.79830, type: "elevated",    offset_nb: 14 },
-    { id: "SNY", name: "Senayan",           lat: -6.22590, lon: 106.80250, type: "elevated",    offset_nb: 17 },
-    { id: "IST", name: "Istora Mandiri",    lat: -6.22480, lon: 106.80730, type: "underground", offset_nb: 19 },
-    { id: "BNH", name: "Bendungan Hilir",   lat: -6.21230, lon: 106.81800, type: "underground", offset_nb: 22 },
-    { id: "STB", name: "Setiabudi Astra",   lat: -6.20860, lon: 106.82170, type: "underground", offset_nb: 24 },
-    { id: "DKA", name: "Dukuh Atas BNI",    lat: -6.20180, lon: 106.82290, type: "underground", offset_nb: 27 },
-    { id: "BHI", name: "Bundaran HI",       lat: -6.19510, lon: 106.82300, type: "underground", offset_nb: 29 }
+    { id: "LBB", name: "Lebak Bulus BSI",      lat: -6.28910, lon: 106.77510, type: "elevated",    offset_nb: 0  },
+    { id: "FTM", name: "Fatmawati Indomaret",  lat: -6.29350, lon: 106.79280, type: "elevated",    offset_nb: 3  },
+    { id: "CPR", name: "Cipete Raya TUKU",     lat: -6.27810, lon: 106.79710, type: "elevated",    offset_nb: 5  },
+    { id: "HJN", name: "Haji Nawi",            lat: -6.26620, lon: 106.79770, type: "elevated",    offset_nb: 7  },
+    { id: "BLA", name: "Blok A",               lat: -6.25570, lon: 106.79770, type: "elevated",    offset_nb: 9  },
+    { id: "BLM", name: "Blok M BCA",           lat: -6.24440, lon: 106.79830, type: "elevated",    offset_nb: 12 },
+    { id: "ASN", name: "ASEAN",                lat: -6.23720, lon: 106.79830, type: "elevated",    offset_nb: 14 },
+    { id: "SNY", name: "Senayan Mastercard",   lat: -6.22590, lon: 106.80250, type: "elevated",    offset_nb: 17 },
+    { id: "IST", name: "Istora Mandiri",       lat: -6.22480, lon: 106.80730, type: "underground", offset_nb: 19 },
+    { id: "BNH", name: "Bendungan Hilir",      lat: -6.21230, lon: 106.81800, type: "underground", offset_nb: 22 },
+    { id: "STB", name: "Setiabudi Astra",      lat: -6.20860, lon: 106.82170, type: "underground", offset_nb: 24 },
+    { id: "DKA", name: "Dukuh Atas BNI",       lat: -6.20180, lon: 106.82290, type: "underground", offset_nb: 27 },
+    { id: "BHI", name: "Bundaran HI Bank DKI", lat: -6.19510, lon: 106.82300, type: "underground", offset_nb: 29 }
   ],
+  // Headway "bands" derived from the official Lebak Bulus → Bundaran HI
+  // weekday timetable on jakartamrt.co.id/jadwal-keberangkatan. Within each
+  // band the train interval is roughly constant; transitions between bands
+  // ramp the cadence up to peak and back down.
   schedule: {
     weekday: {
       start: "05:00", end: "24:00",
-      peak_windows: [["07:00","09:00"], ["17:00","19:00"]],
-      peak_headway: 5,
-      offpeak_headway: 10
+      bands: [
+        { from: "05:00", to: "05:48", headway: 12 },
+        { from: "05:48", to: "06:45", headway: 7  },
+        { from: "06:45", to: "08:45", headway: 5  },  // AM peak
+        { from: "08:45", to: "10:00", headway: 7.5 },
+        { from: "10:00", to: "15:00", headway: 10 },
+        { from: "15:00", to: "16:10", headway: 7  },
+        { from: "16:10", to: "18:10", headway: 5  },  // PM peak
+        { from: "18:10", to: "19:00", headway: 8  },
+        { from: "19:00", to: "22:10", headway: 10 },
+        { from: "22:10", to: "24:00", headway: 13 }
+      ]
     },
     weekend: {
-      start: "06:00", end: "24:00",
-      headway: 10
+      start: "05:00", end: "24:00",
+      bands: [
+        { from: "05:00", to: "24:00", headway: 10 }
+      ]
     }
   },
   // walk time from gate through tap-in to platform (in seconds)
@@ -259,9 +274,6 @@ function nowMinutes(date = new Date()) {
 }
 function isWeekend(date = new Date()) {
   const d = date.getDay(); return d === 0 || d === 6;
-}
-function inWindow(minutes, windows) {
-  return windows.some(([s, e]) => minutes >= hmToMin(s) && minutes < hmToMin(e));
 }
 
 // ============================================================
@@ -295,9 +307,10 @@ function terminalDeparturesAfter(nowMin, date = new Date()) {
 }
 
 function headwayAt(minOfDay, sched) {
-  if (sched.headway) return sched.headway; // weekend flat
-  if (inWindow(minOfDay, sched.peak_windows)) return sched.peak_headway;
-  return sched.offpeak_headway;
+  for (const b of sched.bands) {
+    if (minOfDay >= hmToMin(b.from) && minOfDay < hmToMin(b.to)) return b.headway;
+  }
+  return 10; // shouldn't happen if bands cover [start, end]
 }
 
 // For a given station and direction, compute times the train arrives at MY station
@@ -378,7 +391,7 @@ function renderDirections(station) {
 
   const directions = [];
   if (!isTerminalNorth) directions.push({ key: "northbound", toward: "Bundaran HI" });
-  if (!isTerminalSouth) directions.push({ key: "southbound", toward: "Lebak Bulus Grab" });
+  if (!isTerminalSouth) directions.push({ key: "southbound", toward: "Lebak Bulus" });
 
   content.innerHTML = "";
   for (const dir of directions) {
