@@ -207,6 +207,42 @@
 
 <script>
 // ============================================================
+// ANONYMOUS TELEMETRY
+// Tiny beacon so we learn about issues users hit in the wild.
+// No PII: no lat/lng, no UA, no IP (Caddy strips those server-side).
+// SESSION is random per page load and never persisted, so two
+// visits from the same device aren't correlatable.
+// ============================================================
+const SESSION = Math.random().toString(36).slice(2, 10);
+const _loggedOnce = new Set();
+function beacon(event, extras = {}) {
+  const params = new URLSearchParams({ e: event, s: SESSION, t: String(Date.now()) });
+  for (const [k, v] of Object.entries(extras)) {
+    params.set(k, String(v).slice(0, 80));
+  }
+  const url = `/log?${params.toString()}`;
+  try {
+    if (navigator.sendBeacon) navigator.sendBeacon(url);
+    else fetch(url, { method: "POST", keepalive: true }).catch(() => {});
+  } catch (_) {}
+}
+function beaconOnce(key, event, extras) {
+  if (_loggedOnce.has(key)) return;
+  _loggedOnce.add(key);
+  beacon(event, extras);
+}
+window.addEventListener("error", (e) => {
+  beacon("js_error", {
+    msg: (e.message || "").slice(0, 80),
+    src: (e.filename || "").split("/").pop().slice(0, 40),
+    line: e.lineno || 0
+  });
+});
+window.addEventListener("unhandledrejection", (e) => {
+  beacon("js_reject", { msg: String(e.reason || "").slice(0, 80) });
+});
+
+// ============================================================
 // DATA
 // ============================================================
 const DATA = {
@@ -408,6 +444,9 @@ function renderDirections(station) {
 
     if (arrivals.length === 0) {
       card.classList.add("closed");
+      beaconOnce(`closed:${station.id}:${dir.key}`, "station_closed", {
+        st: station.id, dir: dir.key, hm: minToHM(Math.floor(now))
+      });
       card.innerHTML = `
         <div class="dir-top">
           <div>
@@ -466,7 +505,11 @@ function populatePicker() {
   picker.style.display = "inline-block";
   picker.onchange = (e) => {
     const s = DATA.stations.find(x => x.id === e.target.value);
-    if (s) { setStation(s); e.target.value = ""; }
+    if (s) {
+      beacon("manual_pick", { st: s.id });
+      setStation(s);
+      e.target.value = "";
+    }
   };
 }
 
@@ -503,6 +546,7 @@ function init() {
   startClock();
 
   if (!("geolocation" in navigator)) {
+    beacon("geo_unsupported");
     showStationList("Geolocation not supported on this device.");
     return;
   }
@@ -520,6 +564,7 @@ function init() {
 
   const onLocation = (err, pos) => {
     if (err) {
+      beacon("geo_error", { code: err.code });
       let msg = "Couldn't get your location.";
       if (err.code === 1) msg = "Location permission denied. Enable it in your browser settings, then reload.";
       else if (err.code === 2) msg = "Location unavailable. Are location services on for this device?";
@@ -531,6 +576,7 @@ function init() {
     if (hit) {
       setStation(hit.station);
     } else {
+      beacon("no_station_match");
       showStationList("You're not near any MRT station (within 400m).");
     }
   };
