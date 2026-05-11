@@ -297,8 +297,14 @@ function terminalDeparturesAfter(nowMin, date = new Date()) {
     const hw = headwayAt(t, sched);
     t += hw;
   }
-  // collect next ~4 departures
-  while (t < endMin && departures.length < 4) {
+  // Collect enough departures to cover both:
+  //   - trains already in transit (up to total_trip_min before now), AND
+  //   - at least 3 future arrivals at the user's station.
+  // With AM-peak hw=5, the in-transit window swallows ~6 departures, so we
+  // keep a comfortable margin above that. Hitting this cap silently used to
+  // make termini (LBB northbound, BHI southbound) show CLOSED at any time
+  // of day because every fetched departure had offset 0 and was already past.
+  while (t < endMin && departures.length < 12) {
     departures.push(t);
     const hw = headwayAt(t, sched);
     t += hw;
@@ -501,23 +507,44 @@ function init() {
     return;
   }
 
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const hit = nearestStation(pos.coords.latitude, pos.coords.longitude, 400);
-      if (hit) {
-        setStation(hit.station);
-      } else {
-        showStationList("You're not near any MRT station (within 400m).");
-      }
-    },
-    (err) => {
+  // First try: quick, low-accuracy fix from cell/WiFi (usually <2s).
+  // If we land within 400m of a station, that's already good enough.
+  // Otherwise retry with high-accuracy GPS for a tighter fix.
+  const tryGetLocation = (highAccuracy, timeoutMs, onDone) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => onDone(null, pos),
+      (err) => onDone(err, null),
+      { enableHighAccuracy: highAccuracy, timeout: timeoutMs, maximumAge: 60000 }
+    );
+  };
+
+  const onLocation = (err, pos) => {
+    if (err) {
       let msg = "Couldn't get your location.";
-      if (err.code === 1) msg = "Location permission denied.";
+      if (err.code === 1) msg = "Location permission denied. Enable it in your browser settings, then reload.";
+      else if (err.code === 2) msg = "Location unavailable. Are location services on for this device?";
       else if (err.code === 3) msg = "Location request timed out.";
       showStationList(msg);
-    },
-    { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
-  );
+      return;
+    }
+    const hit = nearestStation(pos.coords.latitude, pos.coords.longitude, 400);
+    if (hit) {
+      setStation(hit.station);
+    } else {
+      showStationList("You're not near any MRT station (within 400m).");
+    }
+  };
+
+  // Fast attempt first; if it fails or returns no station, fall back to GPS.
+  tryGetLocation(false, 6000, (err, pos) => {
+    if (!err) {
+      const hit = nearestStation(pos.coords.latitude, pos.coords.longitude, 400);
+      if (hit) { setStation(hit.station); return; }
+    }
+    // Either an error, or we got a fix but weren't near a station.
+    // Retry with high-accuracy GPS and a generous timeout.
+    tryGetLocation(true, 20000, onLocation);
+  });
 }
 
 init();
