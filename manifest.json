@@ -1,6 +1,6 @@
 {
-  "name": "MRT Dash",
-  "short_name": "MRT Dash",
+  "name": "HurryApp!",
+  "short_name": "HurryApp!",
   "description": "Should I dash, walk, or chill? Live MRT Jakarta arrivals at your nearest station.",
   "start_url": "/",
   "scope": "/",

@@ -1,7 +1,8 @@
-const CACHE = 'mrt-dash-v5';
+const CACHE = 'hurryapp-v6';
 const ASSETS = [
   '/',
   '/index.html',
+  '/style.css',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
