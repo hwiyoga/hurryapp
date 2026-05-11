@@ -1,4 +1,4 @@
-const CACHE = 'mrt-dash-v4';
+const CACHE = 'mrt-dash-v5';
 const ASSETS = [
   '/',
   '/index.html',

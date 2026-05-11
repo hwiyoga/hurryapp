@@ -246,20 +246,28 @@ window.addEventListener("unhandledrejection", (e) => {
 // DATA
 // ============================================================
 const DATA = {
+  // offset_nb = travel minutes from LBB on a northbound train.
+  // offset_sb = travel minutes from BHI on a southbound train.
+  // The two are NOT symmetric: northbound total is 29 min, southbound is
+  // ~28, and SNY is a further outlier (27). Values marked ✓ are from
+  // direct platform-board observations (BLM/SNY/BNH on 2026-05-11 evening,
+  // IST on 2026-05-11 afternoon). The rest are interpolated as 28-offset_nb,
+  // which matches the three confirmed mid-line stations cleanly; refine
+  // when more platform-board photos come in.
   stations: [
-    { id: "LBB", name: "Lebak Bulus BSI",      lat: -6.28910, lon: 106.77510, type: "elevated",    offset_nb: 0  },
-    { id: "FTM", name: "Fatmawati Indomaret",  lat: -6.29350, lon: 106.79280, type: "elevated",    offset_nb: 3  },
-    { id: "CPR", name: "Cipete Raya TUKU",     lat: -6.27810, lon: 106.79710, type: "elevated",    offset_nb: 5  },
-    { id: "HJN", name: "Haji Nawi",            lat: -6.26620, lon: 106.79770, type: "elevated",    offset_nb: 7  },
-    { id: "BLA", name: "Blok A",               lat: -6.25570, lon: 106.79770, type: "elevated",    offset_nb: 9  },
-    { id: "BLM", name: "Blok M BCA",           lat: -6.24440, lon: 106.79830, type: "elevated",    offset_nb: 12 },
-    { id: "ASN", name: "ASEAN",                lat: -6.23720, lon: 106.79830, type: "elevated",    offset_nb: 14 },
-    { id: "SNY", name: "Senayan Mastercard",   lat: -6.22590, lon: 106.80250, type: "elevated",    offset_nb: 17 },
-    { id: "IST", name: "Istora Mandiri",       lat: -6.22480, lon: 106.80730, type: "underground", offset_nb: 19 },
-    { id: "BNH", name: "Bendungan Hilir",      lat: -6.21230, lon: 106.81800, type: "underground", offset_nb: 22 },
-    { id: "STB", name: "Setiabudi Astra",      lat: -6.20860, lon: 106.82170, type: "underground", offset_nb: 24 },
-    { id: "DKA", name: "Dukuh Atas BNI",       lat: -6.20180, lon: 106.82290, type: "underground", offset_nb: 27 },
-    { id: "BHI", name: "Bundaran HI Bank DKI", lat: -6.19510, lon: 106.82300, type: "underground", offset_nb: 29 }
+    { id: "LBB", name: "Lebak Bulus BSI",      lat: -6.28910, lon: 106.77510, type: "elevated",    offset_nb: 0,  offset_sb: 28 },
+    { id: "FTM", name: "Fatmawati Indomaret",  lat: -6.29350, lon: 106.79280, type: "elevated",    offset_nb: 3,  offset_sb: 25 },
+    { id: "CPR", name: "Cipete Raya TUKU",     lat: -6.27810, lon: 106.79710, type: "elevated",    offset_nb: 5,  offset_sb: 23 },
+    { id: "HJN", name: "Haji Nawi",            lat: -6.26620, lon: 106.79770, type: "elevated",    offset_nb: 7,  offset_sb: 21 },
+    { id: "BLA", name: "Blok A",               lat: -6.25570, lon: 106.79770, type: "elevated",    offset_nb: 9,  offset_sb: 19 },
+    { id: "BLM", name: "Blok M BCA",           lat: -6.24440, lon: 106.79830, type: "elevated",    offset_nb: 13, offset_sb: 15 }, // ✓ both
+    { id: "ASN", name: "ASEAN",                lat: -6.23720, lon: 106.79830, type: "elevated",    offset_nb: 14, offset_sb: 14 },
+    { id: "SNY", name: "Senayan Mastercard",   lat: -6.22590, lon: 106.80250, type: "elevated",    offset_nb: 17, offset_sb: 10 }, // ✓ SB
+    { id: "IST", name: "Istora Mandiri",       lat: -6.22480, lon: 106.80730, type: "underground", offset_nb: 19, offset_sb: 9  }, // ✓ SB
+    { id: "BNH", name: "Bendungan Hilir",      lat: -6.21230, lon: 106.81800, type: "underground", offset_nb: 22, offset_sb: 6  }, // ✓ SB
+    { id: "STB", name: "Setiabudi Astra",      lat: -6.20860, lon: 106.82170, type: "underground", offset_nb: 24, offset_sb: 4  },
+    { id: "DKA", name: "Dukuh Atas BNI",       lat: -6.20180, lon: 106.82290, type: "underground", offset_nb: 27, offset_sb: 1  },
+    { id: "BHI", name: "Bundaran HI Bank DKI", lat: -6.19510, lon: 106.82300, type: "underground", offset_nb: 29, offset_sb: 0  }
   ],
   // Official MRTJ terminal-departure timetables, rounded to the nearest
   // minute. Source PDFs are checked into Data_from_MRTJ/ (Jadwal_LBB.pdf
@@ -324,8 +332,7 @@ const DATA = {
     }
   },
   // walk time from gate through tap-in to platform (in seconds)
-  walk_seconds: { elevated: 75, underground: 105 },
-  total_trip_min: 29
+  walk_seconds: { elevated: 75, underground: 105 }
 };
 
 // Fill in the weekend placeholder. Remove this once we parse a real PDF.
@@ -381,9 +388,7 @@ const _SCHED_MINS = {
 function nextArrivalsAtStation(station, direction, nowMin, date = new Date()) {
   // northbound = from Lebak Bulus toward Bundaran HI
   // southbound = from Bundaran HI toward Lebak Bulus
-  const offset = direction === "northbound"
-    ? station.offset_nb
-    : (DATA.total_trip_min - station.offset_nb);
+  const offset = direction === "northbound" ? station.offset_nb : station.offset_sb;
   const list = (isWeekend(date) ? _SCHED_MINS.weekend : _SCHED_MINS.weekday)[direction];
 
   const arrivals = [];
