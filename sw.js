@@ -1,4 +1,4 @@
-const CACHE = 'hurryapp-v7';
+const CACHE = 'hurryapp-v8';
 const ASSETS = [
   '/',
   '/index.html',
